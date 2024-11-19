@@ -6,17 +6,23 @@ import django
 from django.db import models
 from asgiref.sync import sync_to_async
 django.setup()
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from telegram import ReplyKeyboardMarkup, KeyboardButton, Update, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, PollAnswerHandler
 from django.db.models import Count
 from bots.models import Utilisateur
 from telegram import InputFile
 
+from broadcasting.share_file import share_file
+from broadcasting.share_file import start_distribution
+from sondage.create import *
+from notification.notify import notify_conv_handler
+from reminder.create import reminder_conv_handler
 
-load_dotenv()
 
-token = os.getenv('TOKEN')
+# load_dotenv()
+
+token = "7795455738:AAHb0OwZSbE0x-A8hmX6Lli0v1TnW5UzxY0"
 
 # Dictionnaire pour stocker les informations utilisateur temporairement
 user_data = {}
@@ -198,10 +204,29 @@ if __name__ == '__main__':
     app = Application.builder().token(token).build()
 
     app.add_handler(CommandHandler('start', start))
+    
     response_handler = MessageHandler((filters.TEXT | filters.CONTACT) & ~filters.COMMAND, responce_consentement)
     app.add_handler(response_handler)
     app.add_handler(CommandHandler('yes', selection))
     app.add_handler(CommandHandler('contact',new_user_contact))
+    
+    # Sondage
+    app.add_handler(conv_handler) #commande /sondage
+    app.add_handler(PollAnswerHandler(handle_poll_answer))
+    
+    # envoi de fichiers
+    app.add_handler(CommandHandler("fichiers", start_distribution))
+    app.add_handler(MessageHandler(filters.ALL, share_file))
+    
+    # Notification 
+    app.add_handler(notify_conv_handler) #commande /notifier
+    
+    # Rappel
+    app.add_handler(reminder_conv_handler) #commande /rappel
+    
+    
+    
    
 
+    print('running...')
     app.run_polling(poll_interval=1)
